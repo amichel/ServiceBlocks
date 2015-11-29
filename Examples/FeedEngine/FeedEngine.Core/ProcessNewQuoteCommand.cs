@@ -22,6 +22,8 @@ namespace FeedEngine.Gateway
             State.LastQuote = _quote;
             var isValid = IsValid(_quote);
             _quote.ProcessedTime = DateTime.UtcNow;
+            _quote.Version = State.NextVersion();
+
             if (isValid)
             {
                 State.LastValidQuote = _quote;

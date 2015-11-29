@@ -7,7 +7,7 @@ namespace FeedEngine.Contracts
     {
         public Quote()
         {
-            
+
         }
 
         public string Instrument { get; set; }
@@ -16,5 +16,6 @@ namespace FeedEngine.Contracts
         public bool IsValid { get; set; }
         public DateTime SentTime { get; set; }
         public DateTime ProcessedTime { get; set; }
+        public long Version { get; set; }
     }
 }

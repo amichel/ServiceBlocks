@@ -5,6 +5,7 @@ using System.Diagnostics;
 using FeedEngine.Contracts;
 using ServiceBlocks.Common.Serializers;
 using ServiceBlocks.Common.Threading;
+using ServiceBlocks.Common.Utilities;
 using ServiceBlocks.Messaging.Common;
 using ServiceBlocks.Messaging.NetMq;
 
@@ -37,6 +38,8 @@ namespace FeedEngine.Gateway
 
         public void Start()
         {
+            //Debug.WriteLine(TimerResolution.SetResolution(500));
+
             _processor = new FeedProcessor(OnValidQuote, OnInvalidQuote);
             _processor.Start();
 
@@ -63,11 +66,11 @@ namespace FeedEngine.Gateway
             _publisher.Stop(timeout);
             _snapshotServer.Stop(timeout);
         }
-        
+
         private void OnValidQuote(Quote quote)
         {
             QuotesCache[quote.Instrument] = quote;
-            
+
             //TODO: can be throttled to publish bulks of quotes - currently let ZMQ do the job
             _publisher.Publish(Constants.QuotesTopicName, BinarySerializer<Quote>.SerializeToByteArray(quote));
         }

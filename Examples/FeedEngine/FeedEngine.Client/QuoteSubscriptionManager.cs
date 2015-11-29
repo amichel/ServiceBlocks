@@ -47,7 +47,7 @@ namespace FeedEngine.Client
                 quotesTopic,
                 _quotesCache,
                 CreateSnapshotClient,
-                (q1, q2) => q2.ProcessedTime > q1.ProcessedTime,
+                (q1, q2) => q2.Version == long.MinValue || q2.Version > q1.Version,
                 q => true, q => q.Instrument, x => x));
 
             if (!_subscriber.StartProducer(60000))
