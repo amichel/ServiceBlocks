@@ -25,22 +25,24 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
         public ClusterMonitor(NodeRole role, string localAddress, string partnerAddress,
             Action<NodeState> stateChangedAction = null, Action<ClusterException> clusterExceptionAction = null,
             IEnumerable<Func<NodeState, bool>> confirmActivationFuncs = null,
-            int partnerTimeout = 500, int connectTimeout = 0)
+            int partnerTimeout = 500, int connectTimeout = 0, bool becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = false)
         {
-            _localState = new InstanceState {Role = role, Status = NodeStatus.Initial};
+            Role = role;
+            _localState = new InstanceState { Role = role, Status = NodeStatus.Initial };
             if (role == NodeRole.StandAlone)
                 return; //no need to run when standalone
 
             _stateChangedAction = stateChangedAction;
             _clusterExceptionAction = clusterExceptionAction;
-            _machine = new ClusterStateMachine(HandleClusterException, CreateConfirmFunction(confirmActivationFuncs));
+            _machine = new ClusterStateMachine(HandleClusterException, CreateConfirmFunction(confirmActivationFuncs), becomeStandAloneWhenPrimaryOnInitialConnectionTimeout);
             _proxy = new PubSubProxy(localAddress, partnerAddress, OnPartnerUpdate, OnConnectionStateChanged,
                 connectTimeout);
 
             _partnerTimeout = partnerTimeout;
-            _pollingInterval = _partnerTimeout/2;
+            _pollingInterval = _partnerTimeout / 2;
             _timer = new Timer(SendUpdateAndCheckForTimeout, null, Timeout.Infinite, _pollingInterval);
         }
+        public NodeRole Role { get; private set; }
 
         public NodeState CurrentState
         {
@@ -90,8 +92,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
         {
             _proxy.Publish(_localState);
 
-            if (_localState.LastPartnerUpdate.HasValue &&
-                DateTime.UtcNow.Subtract(_localState.LastPartnerUpdate.Value).TotalMilliseconds > _partnerTimeout)
+            if (!_localState.LastPartnerUpdate.HasValue || DateTime.UtcNow.Subtract(_localState.LastPartnerUpdate.Value).TotalMilliseconds > _partnerTimeout)
                 _machine.RaiseEvent(_localState, _machine.LostPartner, _localState);
         }
 

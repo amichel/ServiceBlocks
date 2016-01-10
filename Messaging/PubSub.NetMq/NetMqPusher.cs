@@ -24,7 +24,7 @@ namespace ServiceBlocks.Messaging.NetMq
             {
                 using (DealerSocket socket = ctx.CreateDealerSocket())
                 {
-                    socket.Connect(Address);
+                    socket.Connect(Address); //TODO: implement automatic reconnects
 
                     foreach (NetMQMessage message in Queue.GetConsumingEnumerable())
                     {

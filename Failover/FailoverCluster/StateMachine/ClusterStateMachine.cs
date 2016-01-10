@@ -6,7 +6,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.StateMachine
     public class ClusterStateMachine : AutomatonymousStateMachine<InstanceState>
     {
         public ClusterStateMachine(Action<ClusterException> handleClusterExceptionAction,
-            Func<NodeState, bool> confirmActivationFunc)
+            Func<NodeState, bool> confirmActivationFunc, bool becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = false)
         {
             InstanceState(x => x.CurrentState);
 
@@ -36,7 +36,11 @@ namespace ServiceBlocks.Failover.FailoverCluster.StateMachine
                 //Primary Partner Found
                 When(PartnerStatusReceived, remote => remote.Role == NodeRole.Primary)
                     .Then((local, remote) => local.Status = NodeStatus.Passive)
-                    .TransitionTo(Passive));
+                    .TransitionTo(Passive),
+
+                When(LostPartner, local => local.Role == NodeRole.Primary && becomeStandAloneWhenPrimaryOnInitialConnectionTimeout)
+                    .Then(local => local.Status = NodeStatus.Active)
+                    .TransitionTo(Active));
 
             //Handle Split Brain - Primary Instance Wins
             During(Active,
@@ -46,14 +50,15 @@ namespace ServiceBlocks.Failover.FailoverCluster.StateMachine
                         (local, remote) =>
                             handleClusterExceptionAction(new ClusterException(ClusterFailureReason.SplitBrain, local,
                                 remote)))
-                    .Then((local, remote) => this.RaiseEvent(local, Stop)));
+                    .Then((local, remote) => this.RaiseEvent(local, Stop)),
+                When(LostPartner)
+                    .Then(local => handleClusterExceptionAction(new ClusterException(ClusterFailureReason.LostPartner))));
 
             //Handle loss of cluster partner (disconnect/timeout). Passive node becomes active
             During(Passive,
                 When(LostPartner, local => confirmActivationFunc(local))
                     .Then(local => local.Status = NodeStatus.Active)
-                    .TransitionTo(Active));
-            DuringAny(
+                    .TransitionTo(Active),
                 When(LostPartner)
                     .Then(local => handleClusterExceptionAction(new ClusterException(ClusterFailureReason.LostPartner))));
 

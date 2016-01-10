@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using FeedEngine.Contracts;
+using Newtonsoft.Json;
 using ServiceBlocks.Common.Serializers;
 using ServiceBlocks.Common.Threading;
-using ServiceBlocks.Messaging.Common;
+using ServiceBlocks.Failover.FailoverCluster;
+using ServiceBlocks.Failover.FailoverCluster.Monitor;
 using ServiceBlocks.Messaging.NetMq;
 using Topshelf;
 
@@ -16,15 +16,17 @@ namespace FeedEngine.VirtualFeed
 {
     public class Feed : ServiceControl
     {
-        private readonly NetMqPusher _pusher;
+        private readonly IEnumerable<NetMqPusher> _pushers;
         private readonly ITaskWorker _worker;
-        private string[] _instruments = { "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD" };
+        private readonly ClusterMonitor _clusterMonitor;
+        private readonly string[] _instruments = { "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD" };
 
         public Feed()
         {
             string address = ConfigurationManager.AppSettings["GatewayServerAddress"];
-            _pusher = new NetMqPusher(address);
+            _pushers = address.Split(';').Select(adr => new NetMqPusher(adr)).ToArray();
             _worker = new TaskWorker(GenerateFeed);
+            _clusterMonitor = CreateCluster();
         }
 
         private void GenerateFeed()
@@ -48,7 +50,8 @@ namespace FeedEngine.VirtualFeed
                         });
                     }
 
-                    _pusher.Publish(Constants.QuotesTopicName, quotes, BinarySerializer<IEnumerable<Quote>>.SerializeToByteArray);
+                    foreach (var pusher in _pushers)
+                        pusher.Publish(Constants.QuotesTopicName, quotes, BinarySerializer<IEnumerable<Quote>>.SerializeToByteArray);
                 }
                 catch (Exception ex)
                 {
@@ -60,16 +63,63 @@ namespace FeedEngine.VirtualFeed
 
         public bool Start(HostControl hostControl)
         {
-            _pusher.Start();
-            _worker.Start();
+            if (_clusterMonitor.Role == NodeRole.StandAlone)
+                StartFeed();
+            else
+                _clusterMonitor.Start();
             return true;
+        }
+
+        private ClusterMonitor CreateCluster()
+        {
+            var nodeRole = (NodeRole)Enum.Parse(typeof(NodeRole), ConfigurationManager.AppSettings["ClusterNodeRole"]);
+            return new ClusterMonitorBuilder()
+                    .ListenOn(ConfigurationManager.AppSettings["ClusterSelfAddress"])
+                    .ConnectTo(ConfigurationManager.AppSettings["ClusterPartnerAddress"])
+                    .WithRole(nodeRole)
+                    .TimeoutAfter(5000)
+                    .WaitForConnection(0)
+                    .BecomeStandAloneWhenPrimaryOnInitialConnectionTimeout()
+                    .WhenConnecting(() => Console.WriteLine("{0}: Connecting", nodeRole))
+                    .WhenActive(() => { StartFeed(); Console.WriteLine("{0}: Active", nodeRole); })
+                    .WhenPassive(() => Console.WriteLine("{0}: Passive", nodeRole))
+                    .WhenStopped(() => { StopFeed(); Console.WriteLine("{0}: Stopped", nodeRole); })
+                    .OnClusterException(HandleClusterException)
+                    .Create(false);
+        }
+
+        private void StartFeed()
+        {
+            _pushers.All(x =>
+            {
+                x.Start();
+                return true;
+            });
+            _worker.Start();
         }
 
         public bool Stop(HostControl hostControl)
         {
-            _worker.Stop();
-            _pusher.Stop();
+            if (_clusterMonitor.Role == NodeRole.StandAlone)
+                StopFeed();
+            else
+                _clusterMonitor.Stop();
             return true;
+        }
+
+        private void StopFeed()
+        {
+            _worker.Stop();
+            _pushers.All(x =>
+            {
+                x.Stop();
+                return true;
+            });
+        }
+        private static void HandleClusterException(ClusterException exception)
+        {
+            Console.WriteLine("Cluster Failure. Reason:{0} Local:{1} Remote:{2}", exception.Reason,
+                JsonConvert.SerializeObject(exception.LocalState), JsonConvert.SerializeObject(exception.RemoteState));
         }
     }
 }

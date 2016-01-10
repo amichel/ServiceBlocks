@@ -41,6 +41,10 @@
     <Reference Include="NetMQ">
       <HintPath>..\..\..\packages\NetMQ.3.3.2.1\lib\net40\NetMQ.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
@@ -59,6 +63,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="VirtualFeed.Backup.config" />
+    <None Include="VirtualFeed.Primary.config" />
+    <None Include="VirtualFeed.Standalone.config" />
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
@@ -66,6 +73,10 @@
     <ProjectReference Include="..\..\..\Common\Common\Common.csproj">
       <Project>{FAA1A0EE-C1B2-4BF7-9511-75990A007E83}</Project>
       <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Failover\FailoverCluster\FailoverCluster.csproj">
+      <Project>{C22897B5-9CC4-43BA-BCAA-83325826E08E}</Project>
+      <Name>FailoverCluster</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Messaging\PubSub.Common\Messaging.Common.csproj">
       <Project>{5FF7EEEF-44DD-4604-B6A0-A57A0DB59410}</Project>

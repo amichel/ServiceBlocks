@@ -29,7 +29,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             InstanceState localState;
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState);
 
-            var remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Passive};
+            var remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Passive };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             Assert.AreEqual("Connecting", stateChanged.Previous.Name);
@@ -44,7 +44,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             InstanceState localState;
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState);
 
-            var remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Active};
+            var remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Active };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             Assert.AreEqual("Connecting", stateChanged.Previous.Name);
@@ -59,14 +59,28 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             InstanceState localState;
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState);
 
-            var remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Initial};
+            var remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Initial };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
-            remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Connecting};
+            remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Connecting };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             Assert.AreEqual("Initial", stateChanged.Previous.Name);
             Assert.AreEqual("Connecting", stateChanged.Current.Name);
+        }
+
+        [TestMethod]
+        public void Test_Primary_BecomeStandAlone_WhenInitialConnectToBackup_Fails()
+        {
+            StateChanged<InstanceState> stateChanged = null;
+            var observer = new MockStateObserver(s => stateChanged = s, Assert.IsNull);
+            InstanceState localState;
+            ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState, becomeStandAloneWhenPrimaryOnInitialConnectionTimeout: true);
+            
+            machine.RaiseEvent(localState, machine.LostPartner, localState);
+
+            Assert.AreEqual("Connecting", stateChanged.Previous.Name);
+            Assert.AreEqual("Active", stateChanged.Current.Name);
         }
 
         [TestMethod]
@@ -77,7 +91,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             InstanceState localState;
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Backup, out localState);
 
-            var remoteState = new NodeState {Role = NodeRole.Primary, Status = NodeStatus.Connecting};
+            var remoteState = new NodeState { Role = NodeRole.Primary, Status = NodeStatus.Connecting };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             Assert.AreEqual("Connecting", stateChanged.Previous.Name);
@@ -94,7 +108,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState,
                 ex => cex = ex);
 
-            var remoteState = new NodeState {Role = NodeRole.Primary, Status = NodeStatus.Connecting};
+            var remoteState = new NodeState { Role = NodeRole.Primary, Status = NodeStatus.Connecting };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
             Assert.AreEqual(ClusterFailureReason.InvalidTopology, cex.Reason);
             Assert.AreEqual("Stopped", stateChanged.Previous.Name);
@@ -102,7 +116,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
 
             machine = CreateClusterStateMachine(observer, NodeRole.Backup, out localState, ex => cex = ex);
 
-            remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Connecting};
+            remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Connecting };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
             Assert.AreEqual(ClusterFailureReason.InvalidTopology, cex.Reason);
             Assert.AreEqual("Stopped", stateChanged.Previous.Name);
@@ -126,7 +140,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             };
             machine.TransitionToState(newState, machine.Active);
 
-            var remoteState = new NodeState {Role = NodeRole.Primary, Status = NodeStatus.Active};
+            var remoteState = new NodeState { Role = NodeRole.Primary, Status = NodeStatus.Active };
             machine.RaiseEvent(newState, machine.PartnerStatusReceived, remoteState);
 
             Assert.AreEqual(ClusterFailureReason.SplitBrain, cex.Reason);
@@ -144,9 +158,9 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState,
                 ex => cex = ex);
 
-            var remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Passive};
+            var remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Passive };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
-            remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Active};
+            remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Active };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
             Assert.IsNull(cex);
             Assert.AreEqual("Connecting", stateChanged.Previous.Name);
@@ -163,7 +177,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Backup, out localState,
                 ex => cex = ex);
 
-            var remoteState = new NodeState {Role = NodeRole.Primary, Status = NodeStatus.Connecting};
+            var remoteState = new NodeState { Role = NodeRole.Primary, Status = NodeStatus.Connecting };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             machine.RaiseEvent(localState, machine.LostPartner, localState);
@@ -182,7 +196,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState,
                 ex => cex = ex);
 
-            var remoteState = new NodeState {Role = NodeRole.Backup, Status = NodeStatus.Passive};
+            var remoteState = new NodeState { Role = NodeRole.Backup, Status = NodeStatus.Passive };
             machine.RaiseEvent(localState, machine.PartnerStatusReceived, remoteState);
 
             machine.RaiseEvent(localState, machine.LostPartner, localState);
@@ -193,11 +207,11 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
 
 
         private static ClusterStateMachine CreateClusterStateMachine(MockStateObserver observer, NodeRole role,
-            out InstanceState localState, Action<ClusterException> clusterExceptionAction = null)
+            out InstanceState localState, Action<ClusterException> clusterExceptionAction = null, bool becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = false)
         {
-            var machine = new ClusterStateMachine(clusterExceptionAction ?? Assert.IsNull, s => true);
+            var machine = new ClusterStateMachine(clusterExceptionAction ?? Assert.IsNull, s => true, becomeStandAloneWhenPrimaryOnInitialConnectionTimeout);
             machine.StateChanged.Subscribe(observer);
-            localState = new InstanceState {Role = role};
+            localState = new InstanceState { Role = role };
             machine.RaiseEvent(localState, machine.Start);
             return machine;
         }

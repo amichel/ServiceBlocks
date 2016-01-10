@@ -16,6 +16,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
         private Action _whenConnecting;
         private Action _whenPassive;
         private Action _whenStopped;
+        private bool _becomeStandAloneWhenPrimaryOnInitialConnectionTimeout;
 
         public ClusterMonitorBuilder ListenOn(string address)
         {
@@ -71,6 +72,12 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
             return this;
         }
 
+        public ClusterMonitorBuilder BecomeStandAloneWhenPrimaryOnInitialConnectionTimeout()
+        {
+            _becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = true;
+            return this;
+        }
+
         public ClusterMonitorBuilder OnClusterException(Action<ClusterException> action)
         {
             _onClusterException = action;
@@ -107,7 +114,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
                             if (_whenStopped != null) _whenStopped();
                             break;
                     }
-                }, _onClusterException, _confirmActivationFuncs, _partnerTimeout, _connectTimeout);
+                }, _onClusterException, _confirmActivationFuncs, _partnerTimeout, _connectTimeout, _becomeStandAloneWhenPrimaryOnInitialConnectionTimeout);
             if (start) monitor.Start();
             return monitor;
         }
