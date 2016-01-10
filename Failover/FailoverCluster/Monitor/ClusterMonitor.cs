@@ -16,6 +16,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
         private readonly InstanceState _localState;
         private readonly ClusterStateMachine _machine;
         private readonly int _partnerTimeout;
+        private readonly bool _becomeStandAloneWhenPrimaryOnInitialConnectionTimeout;
         private readonly int _pollingInterval;
         private readonly PubSubProxy _proxy;
         private readonly Action<NodeState> _stateChangedAction;
@@ -39,6 +40,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
                 connectTimeout);
 
             _partnerTimeout = partnerTimeout;
+            _becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = becomeStandAloneWhenPrimaryOnInitialConnectionTimeout;
             _pollingInterval = _partnerTimeout / 2;
             _timer = new Timer(SendUpdateAndCheckForTimeout, null, Timeout.Infinite, _pollingInterval);
         }
@@ -136,7 +138,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.Monitor
                 _subscription = _machine.StateChanged.Subscribe(this);
                 _machine.RaiseEvent(_localState, _machine.Start);
 
-                if (!_proxy.Start())
+                if (!_proxy.Start() && !_becomeStandAloneWhenPrimaryOnInitialConnectionTimeout)
                     throw new ClusterException(ClusterFailureReason.ConnectionTimeout, _localState, null);
 
                 _timer.Change(0, _pollingInterval);
