@@ -20,7 +20,6 @@
     {
         InvalidTopology,
         SplitBrain,
-        LostPartner,
-        ConnectionTimeout
+        LostPartner
     }
 }

@@ -6,7 +6,7 @@ namespace ServiceBlocks.Failover.FailoverCluster.StateMachine
     public class ClusterStateMachine : AutomatonymousStateMachine<InstanceState>
     {
         public ClusterStateMachine(Action<ClusterException> handleClusterExceptionAction,
-            Func<NodeState, bool> confirmActivationFunc, bool becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = false)
+            Func<NodeState, bool> confirmActivationFunc, bool becomeActiveWhenPrimaryOnInitialConnectionTimeout = false)
         {
             InstanceState(x => x.CurrentState);
 
@@ -38,9 +38,12 @@ namespace ServiceBlocks.Failover.FailoverCluster.StateMachine
                     .Then((local, remote) => local.Status = NodeStatus.Passive)
                     .TransitionTo(Passive),
 
-                When(LostPartner, local => local.Role == NodeRole.Primary && becomeStandAloneWhenPrimaryOnInitialConnectionTimeout)
+                When(LostPartner, local => local.Role == NodeRole.Primary && becomeActiveWhenPrimaryOnInitialConnectionTimeout)
                     .Then(local => local.Status = NodeStatus.Active)
-                    .TransitionTo(Active));
+                    .TransitionTo(Active),
+
+               When(LostPartner, local => local.Role != NodeRole.Primary || !becomeActiveWhenPrimaryOnInitialConnectionTimeout)
+                    .Then(local => handleClusterExceptionAction(new ClusterException(ClusterFailureReason.LostPartner))));
 
             //Handle Split Brain - Primary Instance Wins
             During(Active,

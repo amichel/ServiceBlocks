@@ -75,7 +75,7 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
             StateChanged<InstanceState> stateChanged = null;
             var observer = new MockStateObserver(s => stateChanged = s, Assert.IsNull);
             InstanceState localState;
-            ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState, becomeStandAloneWhenPrimaryOnInitialConnectionTimeout: true);
+            ClusterStateMachine machine = CreateClusterStateMachine(observer, NodeRole.Primary, out localState, becomeActiveWhenPrimaryOnInitialConnectionTimeout: true);
             
             machine.RaiseEvent(localState, machine.LostPartner, localState);
 
@@ -207,9 +207,9 @@ namespace ServiceBlocks.Failover.FailoverClusterTests
 
 
         private static ClusterStateMachine CreateClusterStateMachine(MockStateObserver observer, NodeRole role,
-            out InstanceState localState, Action<ClusterException> clusterExceptionAction = null, bool becomeStandAloneWhenPrimaryOnInitialConnectionTimeout = false)
+            out InstanceState localState, Action<ClusterException> clusterExceptionAction = null, bool becomeActiveWhenPrimaryOnInitialConnectionTimeout = false)
         {
-            var machine = new ClusterStateMachine(clusterExceptionAction ?? Assert.IsNull, s => true, becomeStandAloneWhenPrimaryOnInitialConnectionTimeout);
+            var machine = new ClusterStateMachine(clusterExceptionAction ?? Assert.IsNull, s => true, becomeActiveWhenPrimaryOnInitialConnectionTimeout);
             machine.StateChanged.Subscribe(observer);
             localState = new InstanceState { Role = role };
             machine.RaiseEvent(localState, machine.Start);
