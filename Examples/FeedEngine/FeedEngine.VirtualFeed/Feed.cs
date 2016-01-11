@@ -79,7 +79,7 @@ namespace FeedEngine.VirtualFeed
                     .WithRole(nodeRole)
                     .TimeoutAfter(5000)
                     .WaitForConnection(0)
-                    .BecomeStandAloneWhenPrimaryOnInitialConnectionTimeout()
+                    .BecomeActiveWhenPrimaryOnInitialConnectionTimeout()
                     .WhenConnecting(() => Console.WriteLine("{0}: Connecting", nodeRole))
                     .WhenActive(() => { StartFeed(); Console.WriteLine("{0}: Active", nodeRole); })
                     .WhenPassive(() => Console.WriteLine("{0}: Passive", nodeRole))
