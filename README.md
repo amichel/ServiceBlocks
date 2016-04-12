@@ -1,4 +1,4 @@
-# ServiceBlocks
+# Service Blocks
 
 Toolbox for building scalable .NET services
 
@@ -23,4 +23,5 @@ Toolbox for building scalable .NET services
 * Automatonymous State Machine
 
 **License**
+
 LGPL-3.0
