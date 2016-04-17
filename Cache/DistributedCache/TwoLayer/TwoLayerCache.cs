@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using ServiceBlocks.DistributedCache.Common;
 
 namespace ServiceBlocks.DistributedCache.TwoLayer
@@ -13,21 +12,33 @@ namespace ServiceBlocks.DistributedCache.TwoLayer
         private readonly ICacheRepository<TKey, TValue> _layer2Repository;
         private readonly IDataSource<TKey, TValue> _dataSource;
         private readonly ICacheNotificationsRouter _cacheNotificationsRouter;
+        private readonly Func<TKey, string> _keySerializer;
+        private readonly Func<string, TKey> _keyDeserializer;
         private readonly ICacheNotificationsProvider<TKey> _layer1NotificationsProvider;
         private readonly ICacheNotificationsProvider<TKey> _layer2NotificationsProvider;
+        private readonly TimeSpan? _ttl;
 
         public TwoLayerCache(ICacheRepository<TKey, TValue> layer1Repository,
             ICacheRepository<TKey, TValue> layer2Repository, IDataSource<TKey, TValue> dataSource,
             ICacheNotificationsRouter cacheNotificationsRouter,
+            Func<TKey, string> keySerializer,
+            Func<string, TKey> keyDeserializer,
             ICacheNotificationsProvider<TKey> layer1NotificationsProvider = null,
-            ICacheNotificationsProvider<TKey> layer2NotificationsProvider = null)
+            ICacheNotificationsProvider<TKey> layer2NotificationsProvider = null,
+            TimeSpan? ttl = null
+           )
         {
+            if (keySerializer == null) throw new ArgumentNullException(nameof(keySerializer));
+            if (keyDeserializer == null) throw new ArgumentNullException(nameof(keyDeserializer));
             _layer1Repository = layer1Repository;
             _layer2Repository = layer2Repository;
             _dataSource = dataSource;
             _cacheNotificationsRouter = cacheNotificationsRouter;
+            _keySerializer = keySerializer;
+            _keyDeserializer = keyDeserializer;
             _layer1NotificationsProvider = layer1NotificationsProvider;
             _layer2NotificationsProvider = layer2NotificationsProvider;
+            _ttl = ttl;
 
             SubscribeToCacheNotifications();
         }
@@ -93,13 +104,10 @@ namespace ServiceBlocks.DistributedCache.TwoLayer
 
         private CacheValueWrapper<TValue> LoadValue(TKey k)
         {
-            var newValue = new CacheValueWrapper<TValue>();
             TValue rawValue;
             if (_dataSource.TryGetValue(k, out rawValue))
-                newValue.SetValue(rawValue);
-            else
-                newValue.SetNotFound(); //not found value will be cached
-            return newValue;
+                return CacheValueWrapper<TValue>.CreateExisting(rawValue, _ttl);
+            return CacheValueWrapper<TValue>.CreateNotFound(_ttl); //not found value will be cached
         }
 
         public bool ContainsKey(TKey key)
@@ -137,7 +145,7 @@ namespace ServiceBlocks.DistributedCache.TwoLayer
             _layer2NotificationsProvider?.Subscribe(InvalidateLayer1Keys); //if layer2 notifications are available invalidate layer 1 with them
 
             if (_cacheNotificationsRouter != null)
-                _layer1NotificationsProvider?.Subscribe(_cacheNotificationsRouter.Publish<TKey, TValue>);
+                _layer1NotificationsProvider?.Subscribe(k => _cacheNotificationsRouter.Publish<TValue>(_keySerializer(k)));
             //if layer 1 notifications available, propagate them to the router that external client may subscribe to
             //otherwise will be handled after invalidation
         }
@@ -149,13 +157,13 @@ namespace ServiceBlocks.DistributedCache.TwoLayer
 
         public void Subscribe(Action<TKey> onInvalidationOfKeyAction)
         {
-            _cacheNotificationsRouter.Subscribe<TKey, TValue>(onInvalidationOfKeyAction);
+            _cacheNotificationsRouter.Subscribe<TValue>(k => onInvalidationOfKeyAction(_keyDeserializer(k)));
         }
 
         private void Publish(TKey keyToInvalidate)
         {
             if (_layer1NotificationsProvider == null)
-                _cacheNotificationsRouter?.Publish<TKey, TValue>(keyToInvalidate);
+                _cacheNotificationsRouter?.Publish<TValue>(_keySerializer(keyToInvalidate));
         }
     }
 }

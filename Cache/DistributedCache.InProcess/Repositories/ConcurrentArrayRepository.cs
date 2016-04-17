@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ServiceBlocks.Collections;
 using ServiceBlocks.DistributedCache.Common;
 
-namespace DistributedCache.InProcess
+namespace DistributedCache.InProcess.Repositories
 {
     public class ConcurrentArrayRepository<TKey, TValue> : ConcurrentArray<CacheValueWrapper<TValue>>, ICacheRepository<TKey, TValue>
     {

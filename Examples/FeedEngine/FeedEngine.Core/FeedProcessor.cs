@@ -41,7 +41,6 @@ namespace FeedEngine.Gateway
 
         public void Stop(int timeout = -1)
         {
-            throw new NotImplementedException();
         }
 
         public void Dispose()

@@ -52,17 +52,25 @@ namespace ServiceBlocks.DistributedCache.Common
             SetTimeStamps(ttl);
         }
 
+        public static CacheValueWrapper<T> CreateExisting(T value, TimeSpan? ttl = null)
+        {
+            var wrapper = new CacheValueWrapper<T>();
+            wrapper.SetValue(value, ttl);
+            return wrapper;
+        }
+
         public static CacheValueWrapper<T> CreateNotFound(TimeSpan? ttl = null)
         {
-            var value = new CacheValueWrapper<T>();
-            value.SetNotFound(ttl);
-            return value;
+            var wrapper = new CacheValueWrapper<T>();
+            wrapper.SetNotFound(ttl);
+            return wrapper;
         }
+
         public static CacheValueWrapper<T> CreateMissing()
         {
-            var value = new CacheValueWrapper<T>();
-            value.SetMissing();
-            return value;
+            var wrapper = new CacheValueWrapper<T>();
+            wrapper.SetMissing();
+            return wrapper;
         }
     }
 }
